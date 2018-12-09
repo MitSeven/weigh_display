@@ -14,8 +14,8 @@ namespace WeighDsp
 {
     public partial class Form1 : Form
     {
-        Thread thr;
-        string weigh = ".000000";
+        string weigh = "000.000";
+        string text="";
         public Form1()
         {
             InitializeComponent();
@@ -47,12 +47,29 @@ namespace WeighDsp
 
         private void SerialPort1_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
+            byte[] by = new byte[64];
+            int len = serialPort1.Read(by, 0, 64);
+            byte[] rcv = new byte[len];
+            Array.Copy(by, rcv, len);
+            string data = System.Text.Encoding.ASCII.GetString(rcv);
+            Thread.Sleep(10);
             txtRcv.Invoke(new Action(() =>
             {
-                txtRcv.Text +="\nNhận: "+ serialPort1.ReadLine()+"\n";
+                txtRcv.Text += data;
             }));
+            if (txtRcv.Text.Length >12)
+            {
+                text = txtRcv.Text;
+                txtRcv.Invoke(new Action(() => { txtRcv.Clear(); }));
+            }
         }
-
+        public string ByteArrayToString(byte[] ba)
+        {
+            StringBuilder hex = new StringBuilder(ba.Length * 2);
+            foreach (byte b in ba)
+                hex.AppendFormat("{0:x2}", b);
+            return hex.ToString();
+        }
         private void Form1_Load(object sender, EventArgs e)
         {
             cbCom.DataSource = SerialPort.GetPortNames();
@@ -72,15 +89,31 @@ namespace WeighDsp
         {
             if (serialPort1.IsOpen)
             {
-                    if ((txtSend.Text.Length == 0))
+                if (text.Length ==13)
+                {
+                    string rev = text.Substring(3, 6);
+                    string wei = "";
+                    for (int i = 5; i >= 0; i--)
                     {
-                        serialPort1.Write(weigh + "0=");
+                        wei += rev[i];
                     }
-                    else
+                    wei = wei.Trim();
+                    if (wei.Length == 5)
                     {
-                        serialPort1.Write(".0000000=");
+                        weigh = wei + "00";
                     }
+                    else if (wei.Length == 6)
+                    {
+                        weigh = wei + "0";
+                    }
+                    txtRcv.Clear();
+                }
+                if (weigh.Length == 7)
+                {
+                    serialPort1.Write(weigh + "0=");
+                }
             }
+            
         }
     }
 }
